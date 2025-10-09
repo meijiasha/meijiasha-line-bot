@@ -1,0 +1,17 @@
+{
+  "name": "line-bot-backend",
+  "version": "1.0.0",
+  "description": "LINE Bot backend for meijiasha",
+  "main": "line-bot-server.js",
+  "scripts": {
+    "start": "node line-bot-server.js"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@line/bot-sdk": "^8.4.1",
+    "express": "^4.19.2",
+    "firebase-admin": "^12.1.0",
+    "package.json": "^0.0.0"
+  }
+}
