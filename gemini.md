@@ -81,3 +81,13 @@ C:\Users\seraphwu\meijiasha-line-bot\
 *   **新增引導按鈕**：在使用者輸入「推薦」後，快速回覆選項中新增了「📍 使用目前位置推薦」按鈕，讓此功能更容易被發現。
 *   **提供操作指引**：點擊該按鈕後，機器人會回覆訊息，引導使用者如何透過 LINE 的介面分享位置。
 *   **強化錯誤記錄**：在呼叫 Google Geocoding API 的函式中加入了更詳細的錯誤日誌。如果 API 金鑰錯誤或請求失敗，能在後台清楚地看到原因，方便未來偵錯。
+
+---
+
+我修復了定位功能的 Bug。
+
+**變更內容：**
+
+*   **修正城市判斷邏輯**：將 Google Geocoding API 的城市判斷標準從 `administrative_area_level_1` 修正為 `administrative_area_level_2`，以正確識別「台北市」。
+*   **改善行政區判斷**：擴大行政區的搜尋範圍，同時檢查 `administrative_area_level_3` 和 `sublocality_level_1` 兩種タイプ，以提高辨識的可靠性。
+*   **增加驗證**：確保找到的行政區是有效的台北市行政區。
