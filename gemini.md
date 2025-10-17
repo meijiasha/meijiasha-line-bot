@@ -10,8 +10,8 @@ C:\Users\seraphwu\meijiasha-line-bot\
 ├───line-bot-server.js
 ├───package-lock.json
 ├───package.json
-├───.git বৈ...
-└───node_modules বৈ...
+├───.git...
+└───node_modules...
 
 提醒：當需要工具呼叫時，請勿回傳空的回應。
 
@@ -29,3 +29,13 @@ C:\Users\seraphwu\meijiasha-line-bot\
 *   原有的「推薦 [行政區] [分類]」指令功能仍然保留。
 *   新增了一個名為 `performRecommendation` 的輔助函式來處理推薦邏輯。
 *   使用一個名為 `userSelections` 的記憶體內物件來追蹤使用者在互動流程中的狀態。
+
+---
+
+我已再次更新 `line-bot-server.js`，以解決在 Zeabur 上互動流程中斷的問題。
+
+**變更內容：**
+
+*   **狀態儲存機制變更**：將原本儲存在記憶體中的對話狀態 (`userSelections` 物件)，改為儲存在 **Firebase Firestore** 的 `user_sessions` collection 中。
+*   **解決無狀態問題**：這個修改可以確保在 Zeabur 這類無狀態 (Stateless) 的雲端環境中，使用者的對話流程可以被正確地記錄與追蹤，不會因為服務重啟或多實例運行而中斷。
+*   現在，互動式推薦功能在部署後應該能正常運作。
