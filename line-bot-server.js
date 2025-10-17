@@ -116,22 +116,9 @@ async function handleEvent(event) {
     }
   }
 
-  // 4. Handle original text command "推薦 [district] [category]"
-  if (receivedText.startsWith('推薦')) {
-    const parts = receivedText.substring(2).trim().split(/\s+/).filter(Boolean);
-    const district = parts[0];
-    const category = parts[1]; // Optional
-
-    if (district && taipeiDistricts.includes(district)) {
-      return performRecommendation(event.replyToken, district, category);
-    } else {
-      const reply = { type: 'text', text: '請提供一個有效的台北市行政區來進行推薦喔！\n範例：\n推薦 信義區\n推薦 大安區 咖啡廳' };
-      return client.replyMessage(event.replyToken, reply);
-    }
-  }
-
-  // Default reply
-  const reply = { type: 'text', text: `您好！試試看傳送「推薦」來開始互動式推薦，或傳送「推薦 [行政區] [分類]」來快速查詢！` };
+  // All other messages will fall through to here.
+  // Guide the user to start the recommendation flow.
+  const reply = { type: 'text', text: `您好！請試著傳送「推薦」，讓我為您尋找台北市的好去處！` };
   return client.replyMessage(event.replyToken, reply);
 }
 
