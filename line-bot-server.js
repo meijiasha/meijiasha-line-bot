@@ -48,8 +48,7 @@ app.post('/webhook', line.middleware(config), (req, res) => {
 });
 
 // --- 4. 事件處理邏輯 ---
-const userSelections = {}; // 簡易的內存來追蹤用戶的選擇狀態
-
+// --- 4. 事件處理邏輯 ---
 async function handleEvent(event) {
   if (event.type !== 'message' || event.message.type !== 'text') {
     return Promise.resolve(null);
@@ -57,11 +56,15 @@ async function handleEvent(event) {
 
   const receivedText = event.message.text.trim();
   const userId = event.source.userId;
-  const selectionState = userSelections[userId];
+
+  // Firestore session collection
+  const sessionRef = db.collection('user_sessions').doc(userId);
+  const sessionDoc = await sessionRef.get();
+  const selectionState = sessionDoc.exists ? sessionDoc.data() : null;
 
   // 1. Start interactive recommendation flow
   if (receivedText === '推薦') {
-    userSelections[userId] = { stage: 'selecting_district' };
+    await sessionRef.set({ stage: 'selecting_district', createdAt: new Date() });
     const reply = {
       type: 'text',
       text: '請選擇您想探索的台北市行政區：',
@@ -81,7 +84,7 @@ async function handleEvent(event) {
 
   // 2. Handle district selection in interactive flow
   if (selectionState && selectionState.stage === 'selecting_district' && taipeiDistricts.includes(receivedText)) {
-    userSelections[userId] = { stage: 'selecting_category', district: receivedText };
+    await sessionRef.update({ stage: 'selecting_category', district: receivedText });
     const categories = ['咖啡廳', '餐廳', '景點', '所有店家'];
     const reply = {
       type: 'text',
@@ -108,7 +111,7 @@ async function handleEvent(event) {
 
     if (validCategories.includes(categoryInput)) {
       const category = categoryInput === '所有店家' ? null : categoryInput;
-      delete userSelections[userId]; // End of flow
+      await sessionRef.delete(); // End of flow
       return performRecommendation(event.replyToken, district, category);
     }
   }
