@@ -230,10 +230,10 @@ async function getDistrictFromCoordinates(latitude, longitude) {
 
         if (data.status === 'OK' && data.results.length > 0) {
             const addressComponents = data.results[0].address_components;
-            const cityComponent = addressComponents.find(c => c.types.includes('administrative_area_level_1'));
-            const districtComponent = addressComponents.find(c => c.types.includes('administrative_area_level_3'));
+            const cityComponent = addressComponents.find(c => c.types.includes('administrative_area_level_2'));
+            const districtComponent = addressComponents.find(c => c.types.includes('administrative_area_level_3') || c.types.includes('sublocality_level_1'));
 
-            if (cityComponent && cityComponent.long_name === '台北市' && districtComponent) {
+            if (cityComponent && cityComponent.long_name === '台北市' && districtComponent && taipeiDistricts.includes(districtComponent.long_name)) {
                 return districtComponent.long_name;
             }
         }
