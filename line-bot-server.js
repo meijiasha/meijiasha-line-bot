@@ -139,16 +139,20 @@ async function handleEvent(event) {
       const uniqueCategories = await getUniqueCategoriesForDistrict(receivedText);
       const quickReplyCategories = ['所有店家', ...uniqueCategories];
 
+      // 建立要顯示給使用者的分類清單字串
+      const categoryListString = uniqueCategories.join('、'); 
+      const replyText = `${receivedText} 這邊收錄了：${categoryListString}。\n\n想找什麼樣的分類呢？`;
+
       const reply = {
         type: 'text',
-        text: `您選了「${receivedText}」。想找什麼樣的分類呢？`,
+        text: replyText, // 使用我們新建立的、資訊更豐富的文字
         quickReply: {
           items: quickReplyCategories.slice(0, 13).map(category => ({
             type: 'action',
             action: {
               type: 'message',
               label: category,
-              text: category
+              text: category // 按鈕傳送的文字維持不變，以便後續邏輯處理
             }
           }))
         }
