@@ -135,12 +135,15 @@ async function handleEvent(event) {
     // Handle district selection in interactive flow
     if (selectionState && selectionState.stage === 'selecting_district' && taipeiDistricts.includes(receivedText)) {
       await sessionRef.update({ stage: 'selecting_category', district: receivedText });
-      const categories = ['咖啡廳', '餐廳', '景點', '所有店家'];
+      
+      const uniqueCategories = await getUniqueCategoriesForDistrict(receivedText);
+      const quickReplyCategories = ['所有店家', ...uniqueCategories];
+
       const reply = {
         type: 'text',
         text: `您選了「${receivedText}」。想找什麼樣的分類呢？`,
         quickReply: {
-          items: categories.map(category => ({
+          items: quickReplyCategories.slice(0, 13).map(category => ({
             type: 'action',
             action: {
               type: 'message',
@@ -157,13 +160,12 @@ async function handleEvent(event) {
     if (selectionState && selectionState.stage === 'selecting_category') {
       const district = selectionState.district;
       const categoryInput = receivedText;
-      const validCategories = ['咖啡廳', '餐廳', '景點', '所有店家'];
-
-      if (validCategories.includes(categoryInput)) {
-        const category = categoryInput === '所有店家' ? null : categoryInput;
-        await sessionRef.delete(); // End of flow
-        return performRecommendation(event.replyToken, district, category);
-      }
+      
+      // Since categories are now dynamic, we trust the user's input from the quick reply.
+      // We no longer need to validate against a fixed list.
+      const category = categoryInput === '所有店家' ? null : categoryInput;
+      await sessionRef.delete(); // End of flow
+      return performRecommendation(event.replyToken, district, category);
     }
 
     // All other messages will fall through to here.
@@ -300,6 +302,22 @@ function shuffleArray(array) {
         const j = Math.floor(Math.random() * (i + 1));
         [array[i], array[j]] = [array[j], array[i]];
     }
+}
+
+async function getUniqueCategoriesForDistrict(district) {
+    if (!db) throw new Error('Firestore is not initialized.');
+    const snapshot = await db.collection('stores_taipei').where('district', '==', district).get();
+    if (snapshot.empty) {
+        return [];
+    }
+    const categories = new Set();
+    snapshot.forEach(doc => {
+        const data = doc.data();
+        if (data.category) {
+            categories.add(data.category);
+        }
+    });
+    return [...categories];
 }
 
 async function getRecommendations(district, category) {
