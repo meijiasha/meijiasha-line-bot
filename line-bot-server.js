@@ -427,43 +427,8 @@ function createStoreCarousel(stores, district, category) {
     };
 }
 
-// --- 7. Rich Menu 設定 ---
-async function createAndSetRichMenu() {
-  const richMenu = {
-    size: { width: 2500, height: 843 },
-    selected: true,
-    name: "DefaultMenu",
-    chatBarText: "開啟選單",
-    areas: [
-      {
-        bounds: { x: 0, y: 0, width: 2500, height: 843 },
-        action: { type: "message", text: "推薦" },
-      },
-    ],
-  };
-
-  try {
-    console.log("Creating Rich Menu...");
-    const richMenuId = await client.createRichMenu(richMenu);
-    console.log(`Rich Menu created successfully. ID: ${richMenuId}`);
-
-    console.log("-------------------------------------------------");
-    console.log("IMPORTANT: Rich Menu image must be uploaded manually.");
-    console.log(`Use the following command with your image (replace {RICH_MENU_ID} and {YOUR_CHANNEL_ACCESS_TOKEN}):`);
-    console.log(`curl -v -X POST https://api-data.line.me/v2/bot/richmenu/${richMenuId}/content -H "Authorization: Bearer {YOUR_CHANNEL_ACCESS_TOKEN}" -H "Content-Type: image/png" -T your-image.png`);
-    console.log("-------------------------------------------------");
-
-    console.log("Setting default Rich Menu...");
-    await client.setDefaultRichMenu(richMenuId);
-    console.log("Default Rich Menu set successfully.");
-  } catch (err) {
-    console.error("Error creating or setting Rich Menu:", err.originalError ? JSON.stringify(err.originalError.response.data) : err);
-  }
-}
-
 // --- 8. 啟動伺服器 ---
 const port = process.env.PORT || 3000;
 app.listen(port, () => {
   console.log(`Server is running on port ${port}`);
-  createAndSetRichMenu(); // On startup, create and set the rich menu
 });
