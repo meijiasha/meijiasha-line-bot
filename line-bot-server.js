@@ -1,3 +1,4 @@
+const axios = require('axios');
 const express = require('express');
 const line = require('@line/bot-sdk');
 const firebase = require('firebase-admin');
@@ -48,78 +49,119 @@ app.post('/webhook', line.middleware(config), (req, res) => {
 });
 
 // --- 4. 事件處理邏輯 ---
-// --- 4. 事件處理邏輯 ---
 async function handleEvent(event) {
-  if (event.type !== 'message' || event.message.type !== 'text') {
+  // Handle non-message events first
+  if (event.type !== 'message') {
     return Promise.resolve(null);
   }
 
-  const receivedText = event.message.text.trim();
   const userId = event.source.userId;
-
-  // Firestore session collection
   const sessionRef = db.collection('user_sessions').doc(userId);
-  const sessionDoc = await sessionRef.get();
-  const selectionState = sessionDoc.exists ? sessionDoc.data() : null;
 
-  // 1. Start interactive recommendation flow
-  if (receivedText === '推薦') {
-    await sessionRef.set({ stage: 'selecting_district', createdAt: new Date() });
-    const reply = {
-      type: 'text',
-      text: '請選擇您想探索的台北市行政區：',
-      quickReply: {
-        items: taipeiDistricts.map(district => ({
-          type: 'action',
-          action: {
-            type: 'message',
-            label: district,
-            text: district
-          }
-        })).slice(0, 13)
-      }
-    };
-    return client.replyMessage(event.replyToken, reply);
-  }
+  // Handle Location Message
+  if (event.message.type === 'location') {
+    const { latitude, longitude } = event.message;
+    const district = await getDistrictFromCoordinates(latitude, longitude);
 
-  // 2. Handle district selection in interactive flow
-  if (selectionState && selectionState.stage === 'selecting_district' && taipeiDistricts.includes(receivedText)) {
-    await sessionRef.update({ stage: 'selecting_category', district: receivedText });
-    const categories = ['咖啡廳', '餐廳', '景點', '所有店家'];
-    const reply = {
-      type: 'text',
-      text: `您選了「${receivedText}」。想找什麼樣的分類呢？`,
-      quickReply: {
-        items: categories.map(category => ({
-          type: 'action',
-          action: {
-            type: 'message',
-            label: category,
-            text: category
-          }
-        }))
-      }
-    };
-    return client.replyMessage(event.replyToken, reply);
-  }
-
-  // 3. Handle category selection and provide recommendations in interactive flow
-  if (selectionState && selectionState.stage === 'selecting_category') {
-    const district = selectionState.district;
-    const categoryInput = receivedText;
-    const validCategories = ['咖啡廳', '餐廳', '景點', '所有店家'];
-
-    if (validCategories.includes(categoryInput)) {
-      const category = categoryInput === '所有店家' ? null : categoryInput;
-      await sessionRef.delete(); // End of flow
-      return performRecommendation(event.replyToken, district, category);
+    if (district && taipeiDistricts.includes(district)) {
+      await sessionRef.set({
+        stage: 'location_received',
+        latitude,
+        longitude,
+        district,
+        createdAt: new Date()
+      });
+      const reply = {
+        type: 'text',
+        text: `您目前在「${district}」，要為您推薦附近的店家嗎？`,
+        quickReply: {
+          items: [{
+            type: 'action',
+            action: { type: 'message', label: '推薦附近店家', text: '推薦附近店家' }
+          }]
+        }
+      };
+      return client.replyMessage(event.replyToken, reply);
+    } else {
+      const reply = { type: 'text', text: '抱歉，您目前的位置似乎不在台北市範圍內喔。' };
+      return client.replyMessage(event.replyToken, reply);
     }
   }
 
-  // All other messages will fall through to here.
-  // Guide the user to start the recommendation flow.
-  const reply = { type: 'text', text: `您好！請試著傳送「推薦」，讓我為您尋找台北市的好去處！` };
-  return client.replyMessage(event.replyToken, reply);
+  // Handle Text Messages
+  if (event.message.type === 'text') {
+    const receivedText = event.message.text.trim();
+    const sessionDoc = await sessionRef.get();
+    const selectionState = sessionDoc.exists ? sessionDoc.data() : null;
+
+    // Handle "推薦附近店家" button
+    if (receivedText === '推薦附近店家' && selectionState && selectionState.stage === 'location_received') {
+      const { latitude, longitude } = selectionState;
+      await sessionRef.delete(); // Clean up session
+      return performNearbyRecommendation(event.replyToken, latitude, longitude);
+    }
+
+    // Handle "推薦" flow
+    if (receivedText === '推薦') {
+      await sessionRef.set({ stage: 'selecting_district', createdAt: new Date() });
+      const reply = {
+        type: 'text',
+        text: '請選擇您想探索的台北市行政區：',
+        quickReply: {
+          items: taipeiDistricts.map(district => ({
+            type: 'action',
+            action: {
+              type: 'message',
+              label: district,
+              text: district
+            }
+          })).slice(0, 13)
+        }
+      };
+      return client.replyMessage(event.replyToken, reply);
+    }
+
+    // Handle district selection in interactive flow
+    if (selectionState && selectionState.stage === 'selecting_district' && taipeiDistricts.includes(receivedText)) {
+      await sessionRef.update({ stage: 'selecting_category', district: receivedText });
+      const categories = ['咖啡廳', '餐廳', '景點', '所有店家'];
+      const reply = {
+        type: 'text',
+        text: `您選了「${receivedText}」。想找什麼樣的分類呢？`,
+        quickReply: {
+          items: categories.map(category => ({
+            type: 'action',
+            action: {
+              type: 'message',
+              label: category,
+              text: category
+            }
+          }))
+        }
+      };
+      return client.replyMessage(event.replyToken, reply);
+    }
+
+    // Handle category selection and provide recommendations in interactive flow
+    if (selectionState && selectionState.stage === 'selecting_category') {
+      const district = selectionState.district;
+      const categoryInput = receivedText;
+      const validCategories = ['咖啡廳', '餐廳', '景點', '所有店家'];
+
+      if (validCategories.includes(categoryInput)) {
+        const category = categoryInput === '所有店家' ? null : categoryInput;
+        await sessionRef.delete(); // End of flow
+        return performRecommendation(event.replyToken, district, category);
+      }
+    }
+
+    // All other messages will fall through to here.
+    // Guide the user to start the recommendation flow.
+    const reply = { type: 'text', text: `您好！請試著傳送「推薦」，讓我為您尋找台北市的好去處！` };
+    return client.replyMessage(event.replyToken, reply);
+  }
+
+  return Promise.resolve(null);
 }
 
 // Helper function to perform recommendation and reply
@@ -139,7 +181,105 @@ async function performRecommendation(replyToken, district, category) {
   }
 }
 
+// New Helper: Perform nearby recommendation and reply
+async function performNearbyRecommendation(replyToken, latitude, longitude) {
+    try {
+        const stores = await getNearbyRecommendations(latitude, longitude);
+        if (!stores || stores.length === 0) {
+            const reply = { type: 'text', text: `抱歉，在您附近找不到可推薦的店家。` };
+            return client.replyMessage(replyToken, reply);
+        }
+        const reply = createStoreCarousel(stores, '您附近');
+        return client.replyMessage(replyToken, reply);
+    } catch (error) {
+        console.error("Nearby Recommendation Error:", error);
+        const reply = { type: 'text', text: '哎呀，推薦附近店家功能好像出了一點問題，請稍後再試。' };
+        return client.replyMessage(replyToken, reply);
+    }
+}
+
+
 // --- 5. 核心推薦邏輯 ---
+
+// New Helper: Get district from coordinates using Google Geocoding API
+async function getDistrictFromCoordinates(latitude, longitude) {
+    const apiKey = process.env.GOOGLE_MAPS_API_KEY;
+    if (!apiKey) {
+        console.error('Google Maps API key is not set.');
+        return null;
+    }
+    const url = `https://maps.googleapis.com/maps/api/geocode/json?latlng=${latitude},${longitude}&key=${apiKey}&language=zh-TW`;
+
+    try {
+        const response = await axios.get(url);
+        const data = response.data;
+
+        if (data.status === 'OK' && data.results.length > 0) {
+            const addressComponents = data.results[0].address_components;
+            const cityComponent = addressComponents.find(c => c.types.includes('administrative_area_level_1'));
+            const districtComponent = addressComponents.find(c => c.types.includes('administrative_area_level_3'));
+
+            if (cityComponent && cityComponent.long_name === '台北市' && districtComponent) {
+                return districtComponent.long_name;
+            }
+        }
+        return null;
+    } catch (error) {
+        console.error('Error fetching geocoding data:', error);
+        return null;
+    }
+}
+
+// New Helper: Calculate distance between two coordinates (Haversine formula)
+function calculateDistance(lat1, lon1, lat2, lon2) {
+    if ((lat1 == lat2) && (lon1 == lon2)) {
+        return 0;
+    }
+    const R = 6371; // Radius of the Earth in km
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLon = (lon2 - lon1) * Math.PI / 180;
+    const a =
+        Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+        Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+        Math.sin(dLon / 2) * Math.sin(dLon / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    return R * c;
+}
+
+// New Helper: Get nearby recommendations
+async function getNearbyRecommendations(latitude, longitude) {
+    if (!db) throw new Error('Firestore is not initialized.');
+
+    const district = await getDistrictFromCoordinates(latitude, longitude);
+    if (!district) return [];
+
+    const snapshot = await db.collection('stores_taipei').where('district', '==', district).get();
+    if (snapshot.empty) {
+        return [];
+    }
+
+    const storesInDistrict = [];
+    snapshot.forEach(doc => {
+        const data = doc.data();
+        // Assuming store data has latitude and longitude fields
+        if (data.latitude && data.longitude) {
+            storesInDistrict.push({ id: doc.id, ...data });
+        }
+    });
+
+    if (storesInDistrict.length === 0) return [];
+
+    // Calculate distance for each store
+    const storesWithDistance = storesInDistrict.map(store => {
+        const distance = calculateDistance(latitude, longitude, store.latitude, store.longitude);
+        return { ...store, distance };
+    });
+
+    // Sort by distance and take the top 3
+    storesWithDistance.sort((a, b) => a.distance - b.distance);
+    return storesWithDistance.slice(0, 3);
+}
+
 function shuffleArray(array) {
     for (let i = array.length - 1; i > 0; i--) {
         const j = Math.floor(Math.random() * (i + 1));

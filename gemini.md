@@ -57,3 +57,17 @@ C:\Users\seraphwu\meijiasha-line-bot\
 
 *   **統一引導**：移除了處理舊式 `推薦 [行政區] [分類]` 文字指令的邏輯。
 *   **簡化回覆**：現在，任何非互動流程中的訊息，都會收到一句統一、簡單的引導回覆，提示使用者輸入「推薦」來開始使用。
+
+---
+
+我加入了使用者的定位推薦功能。
+
+**變更內容：**
+
+*   **新增 `axios` 套件**：用於從後端伺服器向 Google Maps API 發送網路請求。
+*   **處理定位訊息**：`handleEvent` 現在可以接收 LINE 的 `location` 訊息。
+*   **整合 Google Geocoding API**：新增 `getDistrictFromCoordinates` 函式，可將經緯度轉換為地址，並判斷使用者是否在台北市。
+*   **新增附近推薦邏輯**：
+    *   當使用者分享位置在台北市時，會出現「推薦附近店家」的按鈕。
+    *   新增 `calculateDistance` 和 `getNearbyRecommendations` 函式，用於計算使用者與店家的距離，並找出最近的店家。
+*   **重要假設**：此功能假設 Firestore 中的店家資料包含 `latitude` 和 `longitude` 欄位。
