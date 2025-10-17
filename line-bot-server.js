@@ -48,41 +48,105 @@ app.post('/webhook', line.middleware(config), (req, res) => {
 });
 
 // --- 4. 事件處理邏輯 ---
+const userSelections = {}; // 簡易的內存來追蹤用戶的選擇狀態
+
 async function handleEvent(event) {
   if (event.type !== 'message' || event.message.type !== 'text') {
     return Promise.resolve(null);
   }
 
   const receivedText = event.message.text.trim();
+  const userId = event.source.userId;
+  const selectionState = userSelections[userId];
 
-  if (receivedText.startsWith('推薦')) {
-    const parts = receivedText.substring(2).trim().split(/\s+/).filter(Boolean);
-    const district = parts[0];
-    const category = parts[1]; // 可選
+  // 1. Start interactive recommendation flow
+  if (receivedText === '推薦') {
+    userSelections[userId] = { stage: 'selecting_district' };
+    const reply = {
+      type: 'text',
+      text: '請選擇您想探索的台北市行政區：',
+      quickReply: {
+        items: taipeiDistricts.map(district => ({
+          type: 'action',
+          action: {
+            type: 'message',
+            label: district,
+            text: district
+          }
+        })).slice(0, 13)
+      }
+    };
+    return client.replyMessage(event.replyToken, reply);
+  }
 
-    if (!district || !taipeiDistricts.includes(district)) {
-        const reply = { type: 'text', text: '請提供一個有效的台北市行政區來進行推薦喔！\n範例：\n推薦 信義區\n推薦 大安區 咖啡廳' };
-        return client.replyMessage(event.replyToken, reply);
-    }
+  // 2. Handle district selection in interactive flow
+  if (selectionState && selectionState.stage === 'selecting_district' && taipeiDistricts.includes(receivedText)) {
+    userSelections[userId] = { stage: 'selecting_category', district: receivedText };
+    const categories = ['咖啡廳', '餐廳', '景點', '所有店家'];
+    const reply = {
+      type: 'text',
+      text: `您選了「${receivedText}」。想找什麼樣的分類呢？`,
+      quickReply: {
+        items: categories.map(category => ({
+          type: 'action',
+          action: {
+            type: 'message',
+            label: category,
+            text: category
+          }
+        }))
+      }
+    };
+    return client.replyMessage(event.replyToken, reply);
+  }
 
-    try {
-        const stores = await getRecommendations(district, category);
-        if (!stores || stores.length === 0) {
-            const reply = { type: 'text', text: `抱歉，在「${district}」找不到可推薦的店家。` };
-            return client.replyMessage(event.replyToken, reply);
-        }
-        const reply = createStoreCarousel(stores, district, category);
-        return client.replyMessage(event.replyToken, reply);
-    } catch (error) {
-        console.error("Recommendation Error:", error);
-        const reply = { type: 'text', text: '哎呀，推薦功能好像出了一點問題，請稍後再試。' };
-        return client.replyMessage(event.replyToken, reply);
+  // 3. Handle category selection and provide recommendations in interactive flow
+  if (selectionState && selectionState.stage === 'selecting_category') {
+    const district = selectionState.district;
+    const categoryInput = receivedText;
+    const validCategories = ['咖啡廳', '餐廳', '景點', '所有店家'];
+
+    if (validCategories.includes(categoryInput)) {
+      const category = categoryInput === '所有店家' ? null : categoryInput;
+      delete userSelections[userId]; // End of flow
+      return performRecommendation(event.replyToken, district, category);
     }
   }
 
-  // 預設回覆或其他指令
-  const reply = { type: 'text', text: `您好！試試看傳送「推薦 [行政區] [分類]」來尋找店家吧！` };
+  // 4. Handle original text command "推薦 [district] [category]"
+  if (receivedText.startsWith('推薦')) {
+    const parts = receivedText.substring(2).trim().split(/\s+/).filter(Boolean);
+    const district = parts[0];
+    const category = parts[1]; // Optional
+
+    if (district && taipeiDistricts.includes(district)) {
+      return performRecommendation(event.replyToken, district, category);
+    } else {
+      const reply = { type: 'text', text: '請提供一個有效的台北市行政區來進行推薦喔！\n範例：\n推薦 信義區\n推薦 大安區 咖啡廳' };
+      return client.replyMessage(event.replyToken, reply);
+    }
+  }
+
+  // Default reply
+  const reply = { type: 'text', text: `您好！試試看傳送「推薦」來開始互動式推薦，或傳送「推薦 [行政區] [分類]」來快速查詢！` };
   return client.replyMessage(event.replyToken, reply);
+}
+
+// Helper function to perform recommendation and reply
+async function performRecommendation(replyToken, district, category) {
+  try {
+    const stores = await getRecommendations(district, category);
+    if (!stores || stores.length === 0) {
+      const reply = { type: 'text', text: `抱歉，在「${district}」${category ? `的「${category}」分類中` : ''}找不到可推薦的店家。` };
+      return client.replyMessage(replyToken, reply);
+    }
+    const reply = createStoreCarousel(stores, district, category);
+    return client.replyMessage(replyToken, reply);
+  } catch (error) {
+    console.error("Recommendation Error:", error);
+    const reply = { type: 'text', text: '哎呀，推薦功能好像出了一點問題，請稍後再試。' };
+    return client.replyMessage(replyToken, reply);
+  }
 }
 
 // --- 5. 核心推薦邏輯 ---
