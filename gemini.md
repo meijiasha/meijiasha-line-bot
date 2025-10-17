@@ -91,3 +91,17 @@ C:\Users\seraphwu\meijiasha-line-bot\
 *   **修正城市判斷邏輯**：將 Google Geocoding API 的城市判斷標準從 `administrative_area_level_1` 修正為 `administrative_area_level_2`，以正確識別「台北市」。
 *   **改善行政區判斷**：擴大行政區的搜尋範圍，同時檢查 `administrative_area_level_3` 和 `sublocality_level_1` 兩種タイプ，以提高辨識的可靠性。
 *   **增加驗證**：確保找到的行政區是有效的台北市行政區。
+
+---
+
+我新增了 Rich Menu (圖文選單) 並改善了本地開發環境。
+
+**變更內容：**
+
+*   **新增預設 Rich Menu**：
+    *   在 `line-bot-server.js` 中新增 `createAndSetRichMenu` 函式，用於在伺服器啟動時建立一個單一按鈕的圖文選單。
+    *   此選單會作為預設選單，顯示「開始推薦」按鈕，簡化使用者操作。
+*   **改善本地開發環境**：
+    *   整合 `dotenv` 套件，讓開發者可以透過 `.env` 檔案管理本地的環境變數 (如 API 金鑰)。
+    *   新增 `.env` 檔案作為設定範本。
+    *   解決了在本地執行時因缺少環境變數而導致的 Firebase 和 LINE API 驗證失敗問題。
