@@ -206,15 +206,6 @@ function createStoreCarousel(stores, district, category) {
                 layout: 'baseline',
                 spacing: 'sm',
                 contents: [
-                    { type: 'text', text: '分類', color: '#aaaaaa', size: 'sm', flex: 1 },
-                    { type: 'text', text: store.category || '未分類', wrap: true, color: '#666666', size: 'sm', flex: 3 }
-                ]
-            },
-            {
-                type: 'box',
-                layout: 'baseline',
-                spacing: 'sm',
-                contents: [
                     { type: 'text', text: '地址', color: '#aaaaaa', size: 'sm', flex: 1 },
                     { type: 'text', text: store.address || '未提供',
                       wrap: true, color: '#666666', size: 'sm', flex: 3 }
@@ -248,6 +239,14 @@ function createStoreCarousel(stores, district, category) {
                         weight: 'bold',
                         size: 'lg',
                         wrap: true,
+                    },
+                    {
+                        type: 'text',
+                        text: store.category || '未分類',
+                        size: 'md',
+                        color: '#666666',
+                        wrap: true,
+                        margin: 'md'
                     }
                 ]
             },
