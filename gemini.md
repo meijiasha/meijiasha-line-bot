@@ -105,3 +105,15 @@ C:\Users\seraphwu\meijiasha-line-bot\
     *   整合 `dotenv` 套件，讓開發者可以透過 `.env` 檔案管理本地的環境變數 (如 API 金鑰)。
     *   新增 `.env` 檔案作為設定範本。
     *   解決了在本地執行時因缺少環境變數而導致的 Firebase 和 LINE API 驗證失敗問題。
+
+---
+
+我重構了 Rich Menu 的建立流程，以解決設定失敗的問題。
+
+**變更內容：**
+
+*   **分離建立與設定流程**：
+    *   移除了 `line-bot-server.js` 中自動執行建立與設定的邏輯，避免了「尚未上傳圖片就試圖設定」的錯誤。
+    *   新增 `create-rich-menu.js` 工具程式，專門用來建立 Rich Menu 的結構並取得 `richMenuId`。
+    *   新增 `set-default-rich-menu.js` 工具程式，專門用來將一個已上傳圖片的 Rich Menu 設為預設。
+*   **明確化手動步驟**：將整個流程修正為「建立結構 -> 上傳圖片 -> 設為預設」三個獨立且順序明確的手動步驟，確保操作的正確性。
