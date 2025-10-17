@@ -101,21 +101,31 @@ async function handleEvent(event) {
       return performNearbyRecommendation(event.replyToken, latitude, longitude);
     }
 
+    // Handle "Use current location" button
+    if (receivedText === '📍 使用目前位置推薦') {
+        const reply = { type: 'text', text: '好的，請點擊畫面左下角的「+」號，選擇「位置資訊」，並分享您的位置給我。' };
+        return client.replyMessage(event.replyToken, reply);
+    }
+
     // Handle "推薦" flow
     if (receivedText === '推薦') {
       await sessionRef.set({ stage: 'selecting_district', createdAt: new Date() });
+      
+      const districtItems = taipeiDistricts.map(district => ({
+          type: 'action',
+          action: { type: 'message', label: district, text: district }
+      }));
+
+      const locationItem = {
+          type: 'action',
+          action: { type: 'message', label: '📍 使用目前位置推薦', text: '📍 使用目前位置推薦' }
+      };
+
       const reply = {
         type: 'text',
-        text: '請選擇您想探索的台北市行政區：',
+        text: '請選擇您想探索的台北市行政區，或使用您目前的位置：',
         quickReply: {
-          items: taipeiDistricts.map(district => ({
-            type: 'action',
-            action: {
-              type: 'message',
-              label: district,
-              text: district
-            }
-          })).slice(0, 13)
+          items: [locationItem, ...districtItems].slice(0, 13)
         }
       };
       return client.replyMessage(event.replyToken, reply);
@@ -214,6 +224,10 @@ async function getDistrictFromCoordinates(latitude, longitude) {
         const response = await axios.get(url);
         const data = response.data;
 
+        if (data.status !== 'OK') {
+            console.error(`Google Geocoding API returned status: ${data.status}. Response: ${JSON.stringify(data)}`);
+        }
+
         if (data.status === 'OK' && data.results.length > 0) {
             const addressComponents = data.results[0].address_components;
             const cityComponent = addressComponents.find(c => c.types.includes('administrative_area_level_1'));
@@ -225,7 +239,7 @@ async function getDistrictFromCoordinates(latitude, longitude) {
         }
         return null;
     } catch (error) {
-        console.error('Error fetching geocoding data:', error);
+        console.error('Google Geocoding API error:', error.response ? JSON.stringify(error.response.data) : error.message);
         return null;
     }
 }
