@@ -163,49 +163,18 @@ async function handleEvent(event) {
       return client.replyMessage(event.replyToken, reply);
     }
 
-    // Handle District selection - Step 3: Select Category
+    // Handle District selection - Step 3: Show Recommendations (Skip Category)
     if (selectionState && selectionState.stage === 'selecting_district') {
       const selectedCity = selectionState.city;
       const districts = DISTRICTS[selectedCity] || [];
 
       if (districts.includes(receivedText)) {
         const selectedDistrict = receivedText;
-        await sessionRef.update({ stage: 'selecting_category', district: selectedDistrict });
 
-        const uniqueCategories = await getUniqueCategoriesForDistrict(selectedCity, selectedDistrict);
-        const quickReplyCategories = ['所有店家', ...uniqueCategories];
-
-        // 建立要顯示給使用者的分類清單字串
-        const categoryListString = uniqueCategories.join('、');
-        const replyText = `${selectedDistrict} 這邊收錄了：${categoryListString}。\n\n想找什麼樣的分類呢？`;
-
-        const reply = {
-          type: 'text',
-          text: replyText,
-          quickReply: {
-            items: quickReplyCategories.slice(0, 13).map(category => ({
-              type: 'action',
-              action: {
-                type: 'message',
-                label: category,
-                text: category
-              }
-            }))
-          }
-        };
-        return client.replyMessage(event.replyToken, reply);
+        // Directly perform recommendation without asking for category
+        await sessionRef.delete(); // End of flow
+        return performRecommendation(event.replyToken, selectedCity, selectedDistrict, null);
       }
-    }
-
-    // Handle Category selection - Step 4: Show Recommendations
-    if (selectionState && selectionState.stage === 'selecting_category') {
-      const city = selectionState.city;
-      const district = selectionState.district;
-      const categoryInput = receivedText;
-
-      const category = categoryInput === '所有店家' ? null : categoryInput;
-      await sessionRef.delete(); // End of flow
-      return performRecommendation(event.replyToken, city, district, category);
     }
 
     // All other messages will fall through to here.
@@ -222,7 +191,7 @@ async function performRecommendation(replyToken, city, district, category) {
   try {
     const stores = await getRecommendations(city, district, category);
     if (!stores || stores.length === 0) {
-      const reply = { type: 'text', text: `抱歉，在「${city}${district}」${category ? `的「${category}」分類中` : ''}找不到可推薦的店家。` };
+      const reply = { type: 'text', text: `抱歉，在「${city}${district}」找不到可推薦的店家。` };
       return client.replyMessage(replyToken, reply);
     }
     const reply = createStoreCarousel(stores, district, category);
@@ -273,6 +242,8 @@ async function getDistrictFromCoordinates(latitude, longitude) {
 
     if (data.status === 'OK' && data.results.length > 0) {
       const addressComponents = data.results[0].address_components;
+      console.log('Geocoding Components:', JSON.stringify(addressComponents)); // DEBUG LOG
+
       const cityComponent = addressComponents.find(c => c.types.includes('administrative_area_level_2')); // 縣市
       const districtComponent = addressComponents.find(c => c.types.includes('administrative_area_level_3') || c.types.includes('sublocality_level_1')); // 行政區
 
@@ -280,12 +251,18 @@ async function getDistrictFromCoordinates(latitude, longitude) {
         const cityName = cityComponent.long_name;
         const districtName = districtComponent.long_name;
 
+        console.log(`Detected: City=${cityName}, District=${districtName}`); // DEBUG LOG
+
         // Check if the city is supported
         if (Object.values(CITIES).includes(cityName)) {
           // Check if the district is valid for that city
           if (DISTRICTS[cityName] && DISTRICTS[cityName].includes(districtName)) {
             return { city: cityName, district: districtName };
+          } else {
+            console.log(`District mismatch: ${districtName} not in ${cityName} list.`); // DEBUG LOG
           }
+        } else {
+          console.log(`City mismatch: ${cityName} not supported.`); // DEBUG LOG
         }
       }
     }
