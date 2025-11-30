@@ -58,7 +58,7 @@ async function handleEvent(event) {
   const userId = event.source.userId;
   const sessionRef = db.collection('user_sessions').doc(userId);
 
-  // Handle Location Message
+  // 處理位置訊息
   if (event.message.type === 'location') {
     const { latitude, longitude } = event.message;
     const locationInfo = await getDistrictFromCoordinates(latitude, longitude);
@@ -82,13 +82,13 @@ async function handleEvent(event) {
     }
   }
 
-  // Handle Text Messages
+  // 處理文字訊息
   if (event.message.type === 'text') {
     const receivedText = event.message.text.trim();
     const sessionDoc = await sessionRef.get();
     const selectionState = sessionDoc.exists ? sessionDoc.data() : null;
 
-    // Handle "推薦附近店家" button
+    // 處理「推薦附近店家」按鈕
     if (receivedText === '推薦附近店家' && selectionState && selectionState.stage === 'location_received') {
       const { latitude, longitude } = selectionState;
       await sessionRef.delete(); // Clean up session
@@ -97,7 +97,7 @@ async function handleEvent(event) {
 
 
 
-    // Handle "推薦" flow - Step 1: Select City
+    // 處理「推薦」流程 - 步驟 1：選擇縣市
     if (receivedText === '推薦') {
       await sessionRef.set({ stage: 'selecting_city', createdAt: new Date() });
 
@@ -121,8 +121,8 @@ async function handleEvent(event) {
       return client.replyMessage(event.replyToken, reply);
     }
 
-    // Handle "Use current location" button (Legacy text fallback, though action should be location now)
-    // If user manually types this or hits an old button
+    // 處理「使用目前位置推薦」按鈕（舊版文字相容，雖然現在應該是 location action）
+    // 如果使用者手動輸入此文字或點擊了舊按鈕
     if (receivedText === '📍 使用目前位置推薦') {
       const reply = {
         type: 'text',
@@ -136,7 +136,7 @@ async function handleEvent(event) {
       };
       return client.replyMessage(event.replyToken, reply);
     }
-    // Handle City selection - Step 2: Select District
+    // 處理縣市選擇 - 步驟 2：選擇行政區
     if (selectionState && selectionState.stage === 'selecting_city' && Object.values(CITIES).includes(receivedText)) {
       const selectedCity = receivedText;
       await sessionRef.update({ stage: 'selecting_district', city: selectedCity });
@@ -157,7 +157,7 @@ async function handleEvent(event) {
       return client.replyMessage(event.replyToken, reply);
     }
 
-    // Handle District selection - Step 3: Show Recommendations (Skip Category)
+    // 處理行政區選擇 - 步驟 3：顯示推薦（跳過分類）
     if (selectionState && selectionState.stage === 'selecting_district') {
       const selectedCity = selectionState.city;
       const districts = DISTRICTS[selectedCity] || [];
@@ -180,7 +180,7 @@ async function handleEvent(event) {
   return Promise.resolve(null);
 }
 
-// Helper function to perform recommendation and reply
+// 輔助函式：執行推薦並回覆
 async function performRecommendation(replyToken, city, district, category) {
   try {
     const stores = await getRecommendations(city, district, category);
@@ -198,7 +198,7 @@ async function performRecommendation(replyToken, city, district, category) {
   }
 }
 
-// New Helper: Perform nearby recommendation and reply
+// 新增輔助函式：執行附近推薦並回覆
 async function performNearbyRecommendation(replyToken, latitude, longitude) {
   try {
     const stores = await getNearbyRecommendations(latitude, longitude);
@@ -219,7 +219,7 @@ async function performNearbyRecommendation(replyToken, latitude, longitude) {
 
 // --- 5. 核心推薦邏輯 ---
 
-// New Helper: Get district from coordinates using Google Geocoding API
+// 新增輔助函式：使用 Google Geocoding API 從座標取得行政區
 async function getDistrictFromCoordinates(latitude, longitude) {
   const apiKey = process.env.GOOGLE_MAPS_API_KEY;
   if (!apiKey) {
@@ -272,7 +272,7 @@ async function getDistrictFromCoordinates(latitude, longitude) {
   }
 }
 
-// New Helper: Calculate distance between two coordinates (Haversine formula)
+// 新增輔助函式：計算兩座標間的距離 (Haversine 公式)
 function calculateDistance(lat1, lon1, lat2, lon2) {
   if ((lat1 == lat2) && (lon1 == lon2)) {
     return 0;
@@ -288,7 +288,7 @@ function calculateDistance(lat1, lon1, lat2, lon2) {
   return R * c;
 }
 
-// New Helper: Get nearby recommendations
+// 新增輔助函式：取得附近推薦
 async function getNearbyRecommendations(latitude, longitude) {
   if (!db) throw new Error('Firestore is not initialized.');
 
@@ -524,7 +524,7 @@ function createStoreCarousel(stores, district, category) {
   };
 }
 
-// Helper: Check if store is open now
+// 輔助函式：檢查店家目前是否營業
 function isOpenNow(periods) {
   if (!periods || !Array.isArray(periods) || periods.length === 0) {
     return null; // Unknown
