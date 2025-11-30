@@ -85,7 +85,16 @@ async function handleEvent(event) {
       };
       return client.replyMessage(event.replyToken, reply);
     } else {
-      const reply = { type: 'text', text: '抱歉，您目前的位置似乎不在我們的服務範圍內喔。' };
+      const reply = {
+        type: 'text',
+        text: '抱歉，我們目前尚未收錄您所在位置（或該區域）的店家資料。\n\n不過，您還是可以透過「手動選擇」來探索其他地區的美食喔！',
+        quickReply: {
+          items: [{
+            type: 'action',
+            action: { type: 'message', label: '手動選擇縣市', text: '推薦' }
+          }]
+        }
+      };
       return client.replyMessage(event.replyToken, reply);
     }
   }
