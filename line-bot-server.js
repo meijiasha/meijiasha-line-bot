@@ -121,6 +121,8 @@ async function handleEvent(event) {
       return client.replyMessage(event.replyToken, reply);
     }
 
+
+
     // 處理「使用目前位置推薦」按鈕（舊版文字相容，雖然現在應該是 location action）
     // 如果使用者手動輸入此文字或點擊了舊按鈕
     if (receivedText === '📍 使用目前位置推薦') {

@@ -23,3 +23,13 @@
 
 ## 流程優化 (Flow Optimization)
 - [x] **位置推薦優化**: 改用 Quick Reply Location Action 直接開啟位置分享
+
+## 圖文選單更新 (Rich Menu Update)
+- [x] **示意圖**: 生成三欄式選單示意圖 (已由使用者提供圖片)
+- [x] **程式修改**: 更新 `create-rich-menu.js` 定義三個點擊區域 (附近、縣市、官網)
+- [x] **後端更新**: 在 `line-bot-server.js` 新增「選擇縣市」指令處理
+- [x] **圖片上傳**: 建立 `upload-rich-menu-image.js` 腳本 (已完成)
+- [x] **部署**: 建立、上傳並套用新選單
+
+## 其他研究 (Other Research)
+- [x] **聊天室背景**: 確認 Messaging API 不支援自動更改背景
