@@ -244,8 +244,11 @@ async function getDistrictFromCoordinates(latitude, longitude) {
       const addressComponents = data.results[0].address_components;
       console.log('Geocoding Components:', JSON.stringify(addressComponents)); // DEBUG LOG
 
-      const cityComponent = addressComponents.find(c => c.types.includes('administrative_area_level_2')); // 縣市
-      const districtComponent = addressComponents.find(c => c.types.includes('administrative_area_level_3') || c.types.includes('sublocality_level_1')); // 行政區
+      // For Taiwan:
+      // administrative_area_level_1 = City (e.g., 新北市, 台北市)
+      // administrative_area_level_2 = District (e.g., 土城區, 大安區)
+      const cityComponent = addressComponents.find(c => c.types.includes('administrative_area_level_1'));
+      const districtComponent = addressComponents.find(c => c.types.includes('administrative_area_level_2'));
 
       if (cityComponent && districtComponent) {
         const cityName = cityComponent.long_name;
