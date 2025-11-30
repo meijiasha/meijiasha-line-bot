@@ -34,5 +34,5 @@
 ## 其他研究 (Other Research)
 - [x] **聊天室背景**: 確認 Messaging API 不支援自動更改背景
 
-## Maintenance
-- [x] Git History Cleanup (Unified author to meijiasha.tw@gmail.com)
+## 維護 (Maintenance)
+- [x] Git 歷史清理 (統一作者為 meijiasha.tw@gmail.com)
