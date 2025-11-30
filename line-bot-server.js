@@ -547,20 +547,18 @@ function isOpenNow(periods) {
 
   // Get current time in Taipei
   const now = new Date();
-  const options = { timeZone: 'Asia/Taipei', hour12: false, weekday: 'numeric', hour: '2-digit', minute: '2-digit' };
-  const formatter = new Intl.DateTimeFormat('en-US', options);
-  const parts = formatter.formatToParts(now);
 
-  // Parse parts to get day and time
-  // weekday: 1 (Mon) - 7 (Sun) in Intl, but Google Maps uses 0 (Sun) - 6 (Sat)
-  let day = parseInt(parts.find(p => p.type === 'weekday').value);
-  // Convert Intl day (1=Mon...7=Sun) to Google day (0=Sun, 1=Mon...6=Sat)
-  // If Intl returns "Monday" etc, we need another way. 
-  // Actually 'numeric' weekday returns 1 for Monday, 7 for Sunday usually? 
-  // Let's use getDay() on a Date object constructed from the Taipei time string to be safe.
-
+  // Use toLocaleString to get the time in Taipei
+  // We don't need Intl.DateTimeFormat with 'weekday: numeric' which causes a crash
   const taipeiTimeStr = now.toLocaleString('en-US', { timeZone: 'Asia/Taipei' });
   const taipeiDate = new Date(taipeiTimeStr);
+
+  // Check if date parsing was successful
+  if (isNaN(taipeiDate.getTime())) {
+    console.error('Failed to parse Taipei time:', taipeiTimeStr);
+    return null;
+  }
+
   const currentDay = taipeiDate.getDay(); // 0 (Sun) - 6 (Sat)
   const currentHours = taipeiDate.getHours();
   const currentMinutes = taipeiDate.getMinutes();
@@ -571,9 +569,6 @@ function isOpenNow(periods) {
 
     const openDay = period.open.day;
     const openTime = parseInt(period.open.time);
-
-    // Handle 24 hours open (usually represented as open day 0 time 0000 and no close, or close next day)
-    // But Google Places API usually gives specific periods.
 
     if (period.close) {
       const closeDay = period.close.day;
@@ -603,7 +598,6 @@ function isOpenNow(periods) {
       }
     } else {
       // No close time usually means open 24 hours for that day? 
-      // Or it might be a data error. Assuming open if current day matches.
       if (currentDay === openDay) return true;
     }
   }

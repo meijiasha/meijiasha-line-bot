@@ -11,3 +11,4 @@
 ## 營業狀態標示 (Open Status Badge)
 - [x] **邏輯實作**: 新增 `isOpenNow` 函式，支援跨日營業判斷
 - [x] **UI 更新**: 在推薦卡片中顯示「營業中」或「休息中」標示
+- [x] **Bug 修復**: 修正 `Intl.DateTimeFormat` 參數導致的崩潰問題
