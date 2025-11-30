@@ -194,8 +194,9 @@ async function performRecommendation(replyToken, city, district, category) {
       const reply = { type: 'text', text: `抱歉，在「${city}${district}」找不到可推薦的店家。` };
       return client.replyMessage(replyToken, reply);
     }
-    const reply = createStoreCarousel(stores, district, category);
-    return client.replyMessage(replyToken, reply);
+    const carousel = createStoreCarousel(stores, district, category);
+    const disclaimer = { type: 'text', text: '* 營業時間資訊抓取自 Google Maps ，還請確認營業時間。' };
+    return client.replyMessage(replyToken, [carousel, disclaimer]);
   } catch (error) {
     console.error("Recommendation Error:", error);
     const reply = { type: 'text', text: '哎呀，推薦功能好像出了一點問題，請稍後再試。' };
@@ -211,8 +212,9 @@ async function performNearbyRecommendation(replyToken, latitude, longitude) {
       const reply = { type: 'text', text: `抱歉，在您附近找不到可推薦的店家。` };
       return client.replyMessage(replyToken, reply);
     }
-    const reply = createStoreCarousel(stores, '您附近');
-    return client.replyMessage(replyToken, reply);
+    const carousel = createStoreCarousel(stores, '您附近');
+    const disclaimer = { type: 'text', text: '* 營業時間資訊抓取自 Google Maps ，還請確認營業時間。' };
+    return client.replyMessage(replyToken, [carousel, disclaimer]);
   } catch (error) {
     console.error("Nearby Recommendation Error:", error);
     const reply = { type: 'text', text: '哎呀，推薦附近店家功能好像出了一點問題，請稍後再試。' };
@@ -440,7 +442,7 @@ function createStoreCarousel(stores, district, category) {
         spacing: 'sm',
         margin: 'md',
         contents: [
-          { type: 'text', text: '菜色', color: '#aaaaaa', size: 'sm', flex: 1 },
+          { type: 'text', text: '👍 招牌菜', color: '#aaaaaa', size: 'sm', flex: 1 },
           { type: 'text', text: store.dishes, wrap: true, color: '#666666', size: 'sm', flex: 3 }
         ]
       });
