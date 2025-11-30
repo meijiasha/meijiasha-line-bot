@@ -65,25 +65,8 @@ async function handleEvent(event) {
 
     if (locationInfo) {
       const { city, district } = locationInfo;
-      await sessionRef.set({
-        stage: 'location_received',
-        latitude,
-        longitude,
-        city,
-        district,
-        createdAt: new Date()
-      });
-      const reply = {
-        type: 'text',
-        text: `您目前在「${city}${district}」，要為您推薦附近的店家嗎？`,
-        quickReply: {
-          items: [{
-            type: 'action',
-            action: { type: 'message', label: '推薦附近店家', text: '推薦附近店家' }
-          }]
-        }
-      };
-      return client.replyMessage(event.replyToken, reply);
+      // Directly perform recommendation
+      return performNearbyRecommendation(event.replyToken, latitude, longitude);
     } else {
       const reply = {
         type: 'text',
@@ -112,11 +95,7 @@ async function handleEvent(event) {
       return performNearbyRecommendation(event.replyToken, latitude, longitude);
     }
 
-    // Handle "Use current location" button
-    if (receivedText === '📍 使用目前位置推薦') {
-      const reply = { type: 'text', text: '好的，請點擊畫面左下角的「+」號，選擇「位置資訊」，並分享您的位置給我。' };
-      return client.replyMessage(event.replyToken, reply);
-    }
+
 
     // Handle "推薦" flow - Step 1: Select City
     if (receivedText === '推薦') {
@@ -129,7 +108,7 @@ async function handleEvent(event) {
 
       const locationItem = {
         type: 'action',
-        action: { type: 'message', label: '📍 使用目前位置推薦', text: '📍 使用目前位置推薦' }
+        action: { type: 'location', label: '📍 使用目前位置推薦' }
       };
 
       const reply = {
@@ -142,6 +121,21 @@ async function handleEvent(event) {
       return client.replyMessage(event.replyToken, reply);
     }
 
+    // Handle "Use current location" button (Legacy text fallback, though action should be location now)
+    // If user manually types this or hits an old button
+    if (receivedText === '📍 使用目前位置推薦') {
+      const reply = {
+        type: 'text',
+        text: '請點擊下方按鈕分享您的位置：',
+        quickReply: {
+          items: [{
+            type: 'action',
+            action: { type: 'location', label: '📍 分享目前位置' }
+          }]
+        }
+      };
+      return client.replyMessage(event.replyToken, reply);
+    }
     // Handle City selection - Step 2: Select District
     if (selectionState && selectionState.stage === 'selecting_city' && Object.values(CITIES).includes(receivedText)) {
       const selectedCity = receivedText;
