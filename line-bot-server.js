@@ -416,6 +416,19 @@ async function getRecommendations(city, district, category) {
 // --- 6. 產生 LINE Flex Message ---
 function createStoreCarousel(stores, district, category) {
   const bubbles = stores.map(store => {
+    const isOpen = isOpenNow(store.opening_hours_periods);
+    let statusText = '';
+    let statusColor = '#aaaaaa';
+
+    if (isOpen === true) {
+      statusText = '營業中';
+      statusColor = '#1DB446'; // Green
+    } else if (isOpen === false) {
+      statusText = '休息中';
+      statusColor = '#FF334B'; // Red
+    }
+    // If null, we don't show anything or show '未知'
+
     const bodyContents = [
       {
         type: 'box',
@@ -444,29 +457,52 @@ function createStoreCarousel(stores, district, category) {
       });
     }
 
-    return {
-      type: 'bubble',
-      size: 'kilo',
-      header: {
+    // Header contents with Badge
+    const headerContents = [
+      {
+        type: 'text',
+        text: store.name || '店家名稱',
+        weight: 'bold',
+        size: 'lg',
+        wrap: true,
+      },
+      {
         type: 'box',
-        layout: 'vertical',
+        layout: 'baseline',
         contents: [
-          {
-            type: 'text',
-            text: store.name || '店家名稱',
-            weight: 'bold',
-            size: 'lg',
-            wrap: true,
-          },
           {
             type: 'text',
             text: store.category || '未分類',
             size: 'md',
             color: '#666666',
             wrap: true,
-            margin: 'md'
+            flex: 0
           }
         ]
+      }
+    ];
+
+    // Add Status Badge if status is known
+    if (statusText) {
+      headerContents[1].contents.push({
+        type: 'text',
+        text: ` · ${statusText}`,
+        size: 'md',
+        color: statusColor,
+        weight: 'bold',
+        wrap: true,
+        margin: 'sm',
+        flex: 0
+      });
+    }
+
+    return {
+      type: 'bubble',
+      size: 'kilo',
+      header: {
+        type: 'box',
+        layout: 'vertical',
+        contents: headerContents
       },
       body: {
         type: 'box',
@@ -501,6 +537,78 @@ function createStoreCarousel(stores, district, category) {
       contents: bubbles
     }
   };
+}
+
+// Helper: Check if store is open now
+function isOpenNow(periods) {
+  if (!periods || !Array.isArray(periods) || periods.length === 0) {
+    return null; // Unknown
+  }
+
+  // Get current time in Taipei
+  const now = new Date();
+  const options = { timeZone: 'Asia/Taipei', hour12: false, weekday: 'numeric', hour: '2-digit', minute: '2-digit' };
+  const formatter = new Intl.DateTimeFormat('en-US', options);
+  const parts = formatter.formatToParts(now);
+
+  // Parse parts to get day and time
+  // weekday: 1 (Mon) - 7 (Sun) in Intl, but Google Maps uses 0 (Sun) - 6 (Sat)
+  let day = parseInt(parts.find(p => p.type === 'weekday').value);
+  // Convert Intl day (1=Mon...7=Sun) to Google day (0=Sun, 1=Mon...6=Sat)
+  // If Intl returns "Monday" etc, we need another way. 
+  // Actually 'numeric' weekday returns 1 for Monday, 7 for Sunday usually? 
+  // Let's use getDay() on a Date object constructed from the Taipei time string to be safe.
+
+  const taipeiTimeStr = now.toLocaleString('en-US', { timeZone: 'Asia/Taipei' });
+  const taipeiDate = new Date(taipeiTimeStr);
+  const currentDay = taipeiDate.getDay(); // 0 (Sun) - 6 (Sat)
+  const currentHours = taipeiDate.getHours();
+  const currentMinutes = taipeiDate.getMinutes();
+  const currentTime = currentHours * 100 + currentMinutes; // HHMM format as integer
+
+  for (const period of periods) {
+    if (!period.open) continue;
+
+    const openDay = period.open.day;
+    const openTime = parseInt(period.open.time);
+
+    // Handle 24 hours open (usually represented as open day 0 time 0000 and no close, or close next day)
+    // But Google Places API usually gives specific periods.
+
+    if (period.close) {
+      const closeDay = period.close.day;
+      const closeTime = parseInt(period.close.time);
+
+      if (openDay === closeDay) {
+        // Same day open/close
+        if (currentDay === openDay) {
+          if (currentTime >= openTime && currentTime < closeTime) {
+            return true;
+          }
+        }
+      } else {
+        // Cross midnight (e.g. Open Mon 2200, Close Tue 0200)
+        // Case 1: Current is Open Day (Mon)
+        if (currentDay === openDay) {
+          if (currentTime >= openTime) {
+            return true;
+          }
+        }
+        // Case 2: Current is Close Day (Tue)
+        if (currentDay === closeDay) {
+          if (currentTime < closeTime) {
+            return true;
+          }
+        }
+      }
+    } else {
+      // No close time usually means open 24 hours for that day? 
+      // Or it might be a data error. Assuming open if current day matches.
+      if (currentDay === openDay) return true;
+    }
+  }
+
+  return false;
 }
 
 // --- 8. 啟動伺服器 ---
