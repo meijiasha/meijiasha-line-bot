@@ -18,3 +18,4 @@
 - [x] **Bug 修復**: 修正 Google Geocoding API 行政區層級對應錯誤 (Level 1=City, Level 2=District)
 - [x] **UI 優化**: 將「菜色」標籤改為「👍 招牌菜」 <!-- id: 17 -->
 - [x] **免責聲明**: 推薦時顯示「營業時間資訊抓取自 Google Maps」提示 <!-- id: 18 -->
+- [x] **UI 微調**: 將「👍 招牌菜」簡化為「👍」 <!-- id: 19 -->

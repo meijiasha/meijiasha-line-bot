@@ -442,7 +442,7 @@ function createStoreCarousel(stores, district, category) {
         spacing: 'sm',
         margin: 'md',
         contents: [
-          { type: 'text', text: '👍 招牌菜', color: '#aaaaaa', size: 'sm', flex: 1 },
+          { type: 'text', text: '👍', color: '#aaaaaa', size: 'sm', flex: 1 },
           { type: 'text', text: store.dishes, wrap: true, color: '#666666', size: 'sm', flex: 3 }
         ]
       });
