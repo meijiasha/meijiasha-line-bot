@@ -60,8 +60,18 @@ async function handleEvent(event) {
 
   // 處理位置訊息
   if (event.message.type === 'location') {
-    const { latitude, longitude } = event.message;
-    const locationInfo = await getDistrictFromCoordinates(latitude, longitude);
+    const { latitude, longitude, address } = event.message;
+
+    // 1. Try to parse from address text first (Cost Optimization)
+    let locationInfo = parseDistrictFromAddress(address);
+
+    if (locationInfo) {
+      console.log(`[Optimization] Location parsed from text: ${locationInfo.city} ${locationInfo.district}`);
+    } else {
+      // 2. Fallback to Google API
+      console.log(`[Fallback] Parsing failed for "${address}", using Google API`);
+      locationInfo = await getDistrictFromCoordinates(latitude, longitude);
+    }
 
     if (locationInfo) {
       const { city, district } = locationInfo;
@@ -220,6 +230,32 @@ async function performNearbyRecommendation(replyToken, latitude, longitude) {
 
 
 // --- 5. 核心推薦邏輯 ---
+
+// 新增輔助函式：從地址字串解析縣市與行政區 (節省 API 呼叫)
+function parseDistrictFromAddress(addressText) {
+  if (!addressText) return null;
+
+  // Regex to extract City (縣/市) and District (區/鄉/鎮/市)
+  // Dynamic regex from supported cities to prevent partial matches (e.g. 106台北市 matching 6台北市)
+  const cities = Object.values(CITIES).sort((a, b) => b.length - a.length);
+  const cityPattern = cities.join('|');
+  const regex = new RegExp(`(?<city>${cityPattern})(?<district>.{1,4}[區鄉鎮市])`);
+
+  const match = addressText.match(regex);
+
+  if (match && match.groups) {
+    const { city, district } = match.groups;
+
+    // Validate against supported locations
+    // Note: city is guaranteed to be in CITIES by regex, but we check DISTRICTS
+    if (Object.values(CITIES).includes(city)) {
+      if (DISTRICTS[city] && DISTRICTS[city].includes(district)) {
+        return { city, district };
+      }
+    }
+  }
+  return null;
+}
 
 // 新增輔助函式：使用 Google Geocoding API 從座標取得行政區
 async function getDistrictFromCoordinates(latitude, longitude) {
