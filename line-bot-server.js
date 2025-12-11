@@ -232,8 +232,15 @@ async function performNearbyRecommendation(replyToken, latitude, longitude) {
 // --- 5. 核心推薦邏輯 ---
 
 // 新增輔助函式：從地址字串解析縣市與行政區 (節省 API 呼叫)
+function normalizeAddressText(text) {
+  if (!text) return text;
+  return text.replace(/臺/g, '台');
+}
+
 function parseDistrictFromAddress(addressText) {
   if (!addressText) return null;
+
+  addressText = normalizeAddressText(addressText);
 
   // Regex to extract City (縣/市) and District (區/鄉/鎮/市)
   // Dynamic regex from supported cities to prevent partial matches (e.g. 106台北市 matching 6台北市)
@@ -285,8 +292,11 @@ async function getDistrictFromCoordinates(latitude, longitude) {
       const districtComponent = addressComponents.find(c => c.types.includes('administrative_area_level_2'));
 
       if (cityComponent && districtComponent) {
-        const cityName = cityComponent.long_name;
+        let cityName = cityComponent.long_name;
         const districtName = districtComponent.long_name;
+
+        // Normalize City Name (e.g. 臺北市 -> 台北市)
+        cityName = normalizeAddressText(cityName);
 
         console.log(`Detected: City=${cityName}, District=${districtName}`); // DEBUG LOG
 
