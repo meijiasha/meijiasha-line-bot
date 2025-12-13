@@ -242,6 +242,7 @@ function parseDistrictFromAddress(addressText) {
 
   addressText = normalizeAddressText(addressText);
 
+
   // Regex to extract City (縣/市) and District (區/鄉/鎮/市)
   // Dynamic regex from supported cities to prevent partial matches (e.g. 106台北市 matching 6台北市)
   const cities = Object.values(CITIES).sort((a, b) => b.length - a.length);
